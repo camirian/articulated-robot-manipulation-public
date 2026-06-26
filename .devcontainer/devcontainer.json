@@ -1,0 +1,28 @@
+{
+    "name": "Articulated Manipulation Sandbox",
+    "build": {
+        "dockerfile": "Dockerfile"
+    },
+    
+    // Architecturally expose hardware layer AND proxy the local Isaac Sim binary directory
+    "runArgs": [
+        "--gpus", "all",
+        "--privileged",
+        "--net=host",
+        "-e", "DISPLAY=${env:DISPLAY}",
+        "-v", "/tmp/.X11-unix:/tmp/.X11-unix",
+        "-v", "${localEnv:HOME}/isaac-sim--5.0.0:${localEnv:HOME}/isaac-sim--5.0.0:ro"
+    ],
+    
+    "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
+    "workspaceFolder": "/workspace",
+    
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-python.python",
+                "ms-iot.vscode-ros"
+            ]
+        }
+    }
+}

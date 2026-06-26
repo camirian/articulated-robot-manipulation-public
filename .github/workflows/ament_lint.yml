@@ -1,0 +1,38 @@
+name: ROS 2 Ament Lint and Build
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build_and_lint:
+    runs-on: ubuntu-22.04
+    container:
+      image: osrf/ros:humble-desktop
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up ROS 2 workspace
+      run: |
+        mkdir -p /home/ros2_ws/src
+        cp -r . /home/ros2_ws/src/articulated-robot-manipulation-public
+        cd /home/ros2_ws
+        apt-get update
+        rosdep update
+        rosdep install --from-paths src --ignore-src -r -y
+      
+    - name: Build packages
+      run: |
+        cd /home/ros2_ws
+        . /opt/ros/humble/setup.sh
+        colcon build --packages-select simple_manipulation simple_moveit_interface
+        
+    - name: Run ament_lint
+      run: |
+        cd /home/ros2_ws
+        . /opt/ros/humble/setup.sh
+        colcon test --packages-select simple_manipulation simple_moveit_interface
+        colcon test-result --all

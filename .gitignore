@@ -1,0 +1,17 @@
+venv/
+node_modules/
+.env
+*.log
+__pycache__/
+.cache/
+volumes/
+seed_data/
+*.pyc
+.pytest_cache/
+*.gguf
+models/
+bin/
+obj/
+build/
+install/
+log/
