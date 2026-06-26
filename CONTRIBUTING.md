@@ -1,14 +1,22 @@
 # Contributing to Articulated Robot Manipulation
 
-This repository implements rigorous Sim-to-Real control pipelines. Contributions must preserve deterministic behavior across both NVIDIA Isaac Sim and the physical hardware.
+Thanks for your interest. This repo pairs a standalone NVIDIA Isaac Sim demo with a small ROS 2 (Humble) workspace, so most contributions touch one of two areas: the Isaac Sim scripts in `scripts/`, or the ROS 2 packages in `ros2_ws/src/` (`simple_manipulation`, `simple_moveit_interface`).
 
-## 🏗️ Sim-to-Real Code Standards
-1.  **Time Sync:** All ROS 2 nodes *must* support the `use_sim_time` parameter. Do not use standard wall-system clocks for any control loops; always use `rclcpp::Clock(RCL_ROS_TIME)`.
-2.  **OmniGraph Integrity:** Modifications to the OmniGraph action graphs (`.usda` files) must guarantee 1:1 parity with the ROS 2 physical driver interfaces. 
-3.  **DDS Profiles:** Do not modify the default FastRTPS profiles without explicit justification logged in an Architectural Decision Record (ADR).
+## Development workflow
 
-## 🔄 Development Workflow
-1.  Fork and branch from `main`.
-2.  Test changes against the reference `ur10e` or `panda` digital twin in Isaac Sim.
-3.  Verify the ROS 2 Action server (`FollowJointTrajectory`) successfully completes without latency spikes.
-4.  Submit a Pull Request and verify the `ament_lint` CI pipeline passes.
+1. Fork the repository and create a feature branch from `main`.
+2. Build the ROS 2 packages and run the linters before opening a PR:
+   ```bash
+   cd ros2_ws
+   colcon build --packages-select simple_manipulation simple_moveit_interface
+   colcon test --packages-select simple_manipulation
+   ```
+   The `simple_manipulation` package ships `ament_flake8`, `ament_pep257`, and `ament_copyright` tests.
+3. If you change Isaac Sim behaviour, verify it against the Franka demo (`scripts/sim_demo.py`) and, where applicable, the end-to-end check in `scripts/verify_project.sh`.
+4. Open a Pull Request. CI (`.github/workflows/build.yml`) runs a `colcon build` of both packages on ROS 2 Humble and must pass.
+
+## Conventions
+
+- Keep ROS 2 nodes that consume the Isaac Sim clock honouring the `use_sim_time` parameter.
+- Match existing topic and frame names (`/joint_command`, `/joint_states`, `/object_pose`) unless a change is documented in the PR description.
+- Avoid committing generated artifacts (`build/`, `install/`, `log/`) — these are already in `.gitignore`.

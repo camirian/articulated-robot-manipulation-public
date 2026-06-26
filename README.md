@@ -1,105 +1,135 @@
 # Articulated Robot Manipulation
 
-
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![ROS 2 Build](https://github.com/camirian/articulated-robot-manipulation-public/actions/workflows/build.yml/badge.svg)](https://github.com/camirian/articulated-robot-manipulation-public/actions/workflows/build.yml)
 
-> Physics-correct pick-and-place pipeline on a Franka Panda 7-DOF arm using NVIDIA Isaac Sim 5.0, Lula IK, and Python — no ROS 2 bridge required for the core demo.
+A physics-based pick-and-place pipeline for a Franka Emika Panda 7-DOF arm in **NVIDIA Isaac Sim 5.0**, plus a **ROS 2 (Humble)** workspace for MoveIt 2 motion planning and a colour-based perception demo.
 
-## 🎬 Live Demo
+The repository contains two complementary tracks:
 
-[![Watch the Demo on YouTube](https://img.shields.io/badge/▶%20Watch%20Demo-YouTube-red?style=for-the-badge&logo=youtube)](https://youtu.be/_889bOzgvUY)
+1. A **standalone Isaac Sim demo** (`scripts/sim_demo.py`) that drives a full pick-and-place cycle using NVIDIA's Lula IK `PickPlaceController` and PhysX rigid-body physics — **no ROS 2 required**.
+2. A **ROS 2 workspace** (`ros2_ws/`) with two packages — `simple_manipulation` (Python) and `simple_moveit_interface` (C++) — that integrate MoveIt 2 motion planning and a perception node with Isaac Sim over the ROS 2 bridge.
 
-> 40-second live screen-capture showing the Franka arm using **Lula Inverse Kinematics** to pick up a rigid-body cube, transport it across the workspace, and place it — all driven by `PickPlaceController` with real PhysX contact forces (gravity + friction).
+## Demo video
 
-For definitions of key terms, please see my central **[AI & Robotics Glossary](https://github.com/camirian/robotics-ontology/blob/main/GLOSSARY.md)**.
+[![Watch the demo on YouTube](https://img.shields.io/badge/▶%20Watch%20Demo-YouTube-red?style=for-the-badge&logo=youtube)](https://youtu.be/_889bOzgvUY)
 
+A short screen capture showing the Franka arm using **Lula Inverse Kinematics** to pick up a rigid-body cube, transport it across the workspace, and place it — driven by `PickPlaceController` with real PhysX contact forces (gravity and friction): **https://youtu.be/_889bOzgvUY**
 
----
-
-## ✅ Skills Demonstrated
-
--   **State Machine Design:** Implementing robust state machines to manage complex robot behaviors (Home -> Grasp -> Lift -> Place).
--   **Trajectory Generation:** Programmatically generating `JointTrajectory` messages to command smooth robot motion.
--   **Sim-to-Real Control:** Designing controllers that act on simulated hardware (Isaac Sim) via standard ROS 2 interfaces, ready for deployment on physical robots.
--   **Python for Robotics:** Utilizing `rclpy` to build modular and reusable ROS 2 nodes.
+For definitions of key terms, see the central **[AI & Robotics Glossary](https://github.com/camirian/robotics-ontology/blob/main/GLOSSARY.md)**.
 
 ---
 
-## 🚀 Projects
+## Prerequisites
 
-### Project 3.1: Sim-to-Real Pick and Place Controller
+> [!IMPORTANT]
+> This project requires NVIDIA Isaac Sim and/or a ROS 2 Humble installation to run. It **cannot** run in a plain environment without these. The two tracks below have different requirements.
 
-A ROS 2 package (`simple_manipulation`) that implements a state-machine-based controller for a Franka Emika Panda robot.
+**For the standalone Isaac Sim demo (`scripts/sim_demo.py`):**
+- NVIDIA Isaac Sim **5.0** (provides its own bundled Python via `python.sh`).
+- An NVIDIA GPU with a driver that meets the [Isaac Sim system requirements](https://docs.isaacsim.omniverse.nvidia.com/latest/installation/requirements.html).
+- Network access on first run (the Franka USD asset is loaded from NVIDIA's asset server).
 
--   **Node:** `manipulation_controller`
--   **Logic:** Cycles through a predefined sequence of poses to simulate a pick-and-place operation.
--   **Interface:** Publishes to `/franka_joint_trajectory_controller/joint_trajectory`.
--   **[▶ Video Demonstration](https://youtu.be/_889bOzgvUY)**
+**For the ROS 2 workspace (`ros2_ws/`):**
+- Ubuntu 22.04.
+- ROS 2 **Humble**.
+- MoveIt 2 (`ros-humble-moveit`) and the Panda MoveIt resources (`ros-humble-moveit-resources-panda-moveit-config`).
+- `colcon` build tools, `python3-opencv`, and `cv_bridge`.
+- To drive the simulation from ROS 2, the Isaac Sim ROS 2 bridge (the Isaac Sim install above) and the bridge setup in `scripts/sim_setup.py`.
 
----
-
-### Project 3.2: MoveIt 2 Integration (Dynamic Planning)
-
-Upgrade of the control system to use **MoveIt 2**, the industry standard for motion planning, integrated seamlessly with Isaac Sim via NVIDIA OmniGraph.
-
--   **Dynamic Planning:** Instead of hardcoded joint angles, we define target *poses* (e.g., "Move gripper to [x, y, z]"). MoveIt calculates the collision-free path.
--   **OmniGraph Integration (The Bridge):** Utilizes an OmniGraph Action Graph as the critical translation layer. It bridges the ROS 2 software environment with the physics simulation by capturing standard `FollowJointTrajectory` actions and deterministically translating them into low-level Isaac Sim articulation joint commands.
--   **Integration:** Full MoveIt stack (MoveGroup, RViz) integrated with the simulation.
--   **[▶ Video Demonstration](https://youtu.be/_889bOzgvUY)**
+A reproducible ROS 2 build environment is also defined in `.devcontainer/` (VS Code Dev Containers) and exercised in CI by `.github/workflows/build.yml`.
 
 ---
 
-### 🏗️ Sim-to-Real Architectural Principles
-To guarantee deterministic behavior when transitioning from simulation to physical hardware, this project adheres to strict Sim-to-Real design principles:
-1.  **Interface Parity:** The ROS 2 APIs exposed by the OmniGraph action graph exactly mirror the hardware drivers of a physical robot.
-2.  **Clock Synchronization:** The ROS 2 network is configured to use the `/clock` topic published by Isaac Sim (`use_sim_time = true`), ensuring node execution is deterministically bound to the simulation's physics step, not the host machine's wall time.
-3.  **DDS Tuning:** Implementation of explicit FastRTPS profiles to ensure low-latency, reliable message passing between perception, planning, and simulation nodes.
+## Repository layout
+
+```
+scripts/
+  sim_demo.py            Standalone Isaac Sim pick-and-place demo (Lula IK, no ROS 2)
+  sim_setup.py           Loads Franka in Isaac Sim and enables the ROS 2 bridge
+  verify_project.sh      End-to-end smoke test (Isaac Sim + ROS 2 launch)
+ros2_ws/src/
+  simple_manipulation/       Python package: controller, perception, MoveIt launch files
+  simple_moveit_interface/   C++ package: move_to_pose MoveGroup client
+.devcontainer/           ROS 2 Humble + MoveIt 2 Dev Container definition
+.github/workflows/       colcon build CI for the two ROS 2 packages
+```
 
 ---
 
-### Project 3.3: Perception Pipeline (Visual Servoing)
+## How to build and run
 
-Implementation of a closed-loop perception system allowing the robot to detect and interact with objects in the environment.
+### Track 1 — Standalone Isaac Sim demo (no ROS 2)
 
--   **RGB-D Processing:** Uses OpenCV to detect objects (Red Cube) based on color and depth data from a wrist-mounted camera.
--   **Projection:** Converts 2D pixel coordinates + Depth into precise 3D World Coordinates for the robot.
--   **Visual Servoing:** A coordinator node (`perform_pick`) dynamically commands the MoveIt interface to move the arm to the detected object's location.
--   **[▶ Video Demonstration](https://youtu.be/_889bOzgvUY)**
+Run the pick-and-place demo directly with the Isaac Sim Python interpreter:
 
----
-
-## 🛠️ How to Build and Run
-
-### 1. Build the Workspace (Inside DevContainer)
-> [!WARNING]
-> DO NOT build this workspace on your Host OS. Open the repository in Visual Studio Code and execute **"Dev Containers: Reopen in Container"**.
-
-Once inside the sandbox, compile the MoveIt 2 C++ architecture:
 ```bash
-cd /workspace/ros2_ws
+# Point this at your Isaac Sim 5.0 install
+PYTHON_SH_PATH=/path/to/isaac-sim/python.sh
+"${PYTHON_SH_PATH}" scripts/sim_demo.py
+```
+
+Isaac Sim opens, loads the Franka and a cube, and runs the full pick-and-place sequence automatically. Watch the terminal for `[DONE] Pick-and-place complete!`.
+
+### Track 2 — ROS 2 workspace (MoveIt 2 + perception)
+
+**1. Build the workspace.** The `.devcontainer/` provides a ready ROS 2 Humble + MoveIt 2 environment; open the repo in VS Code and run **"Dev Containers: Reopen in Container"**, or build on a host that already has ROS 2 Humble and MoveIt 2.
+
+```bash
+cd ros2_ws
+rosdep install --from-paths src --ignore-src -r -y
 colcon build --symlink-install
 source install/setup.bash
 ```
 
-### **Run the Standalone Pick-and-Place Demo (Isaac Sim 5.0)**
-No ROS 2 required. Uses the Lula IK `PickPlaceController` directly.
+> [!NOTE]
+> The MoveIt launch files depend on `moveit_resources_panda_moveit_config`. Install it with
+> `sudo apt install ros-humble-moveit-resources-panda-moveit-config` if it is not already present.
+
+**2. Bring up MoveIt 2** (MoveGroup + RViz) for the Panda:
 
 ```bash
-PYTHON_SH_PATH=/path/to/isaac-sim/python.sh
-"${PYTHON_SH_PATH}" scripts/sim_demo.py
+ros2 launch simple_manipulation bringup_moveit.launch.py
 ```
-*Wait for Isaac Sim to load. The simulation starts automatically and runs the full pick-and-place sequence.*
-*Watch the terminal for `[DONE] Pick-and-place complete!`*
 
-**Open Terminal 3 (Action):**
+**3. Drive Isaac Sim from ROS 2.** In a separate terminal, start Isaac Sim with the ROS 2 bridge so it publishes `/joint_states` and accepts `/joint_command`:
+
 ```bash
-source ros2_ws/install/setup.bash
+"${PYTHON_SH_PATH}" scripts/sim_setup.py
+```
+
+The `manipulation_controller` node publishes `sensor_msgs/JointState` messages to the `/joint_command` topic that Isaac Sim's bridge consumes:
+
+```bash
+ros2 run simple_manipulation manipulation_controller
+```
+
+**4. Perception-driven pick (optional).** `visual_pick.launch.py` brings up MoveIt together with the camera transform and perception node. The `perform_pick` coordinator waits for a detected object pose on `/object_pose` and commands the arm to hover above the cube:
+
+```bash
+ros2 launch simple_manipulation visual_pick.launch.py
+# in another terminal
 ros2 run simple_manipulation perform_pick
 ```
-*(The robot will detect the cube and verify alignment by hovering above it)*
+
+### End-to-end smoke test
+
+`scripts/verify_project.sh` launches Isaac Sim headless, waits for the ROS 2 bridge, checks for `/joint_states`, and runs the recording launch file. It expects an Isaac Sim Python at `$ISAAC_SIM_PYTHON` (or `~/isaac-sim-4.5.0/python.sh`); set the variable for your install before running.
 
 ---
 
-## 📜 License
+## Available ROS 2 entry points
 
-This project is licensed under the Apache 2.0 License.
+| Package | Executable | Role |
+| --- | --- | --- |
+| `simple_manipulation` | `manipulation_controller` | Publishes `JointState` commands to `/joint_command` |
+| `simple_manipulation` | `simple_trajectory_server` | Trajectory server helper |
+| `simple_manipulation` | `perception_node` | OpenCV colour + depth object detection, publishes `/object_pose` |
+| `simple_manipulation` | `perform_pick` | Coordinator that reacts to detected object poses |
+| `simple_moveit_interface` | `move_to_pose` | C++ MoveGroup client for Cartesian pose goals |
+
+---
+
+## License
+
+This project is licensed under the [Apache 2.0 License](LICENSE).
