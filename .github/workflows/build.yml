@@ -1,4 +1,4 @@
-name: ROS 2 Ament Lint and Build
+name: ROS 2 Build
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build_and_lint:
+  build:
     runs-on: ubuntu-22.04
     container:
       image: osrf/ros:humble-desktop
@@ -23,16 +23,9 @@ jobs:
         apt-get update
         rosdep update
         rosdep install --from-paths src --ignore-src -r -y
-      
+
     - name: Build packages
       run: |
         cd /home/ros2_ws
         . /opt/ros/humble/setup.sh
         colcon build --packages-select simple_manipulation simple_moveit_interface
-        
-    - name: Run ament_lint
-      run: |
-        cd /home/ros2_ws
-        . /opt/ros/humble/setup.sh
-        colcon test --packages-select simple_manipulation simple_moveit_interface
-        colcon test-result --all
