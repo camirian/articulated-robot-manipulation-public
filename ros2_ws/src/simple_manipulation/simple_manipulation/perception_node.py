@@ -11,6 +11,8 @@ import numpy as np
 import tf2_ros
 from tf2_geometry_msgs import do_transform_pose
 
+from simple_manipulation import detection
+
 class PerceptionNode(Node):
     def __init__(self):
         super().__init__('perception_node')
@@ -91,103 +93,70 @@ class PerceptionNode(Node):
 
         try:
             cv_image = self.br.imgmsg_to_cv2(msg, "bgr8")
-            
-            # --- Robust Double Mask (Architect Spec) ---
-            hsv = cv2.cvtColor(cv_image, cv2.COLOR_BGR2HSV)
-            
-            # Mask 1: Bright/Glare Red
-            lower_red1 = np.array([0, 50, 50])
-            upper_red1 = np.array([15, 255, 255])
-            mask1 = cv2.inRange(hsv, lower_red1, upper_red1)
-            
-            # Mask 2: Deep Red
-            lower_red2 = np.array([165, 50, 50])
-            upper_red2 = np.array([180, 255, 255])
-            mask2 = cv2.inRange(hsv, lower_red2, upper_red2)
-            
-            mask = cv2.bitwise_or(mask1, mask2)
-            
+
+            # --- Detect red cube (pure helper; mask returned for debug) ---
+            cx, cy, max_area, mask = detection.detect_red_cube(cv_image)
+
             # Publish Debug Mask
             debug_msg = self.br.cv2_to_imgmsg(mask, encoding="mono8")
             debug_msg.header = msg.header
             self.publisher_mask.publish(debug_msg)
-            
-            contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-            
-            max_area = 0
-            if contours:
-                c = max(contours, key=cv2.contourArea)
-                max_area = cv2.contourArea(c)
-                
-                # Minimum Area 100px (Architect Spec)
-                if max_area > 100:
-                    M = cv2.moments(c)
-                    if M["m00"] != 0:
-                        cx = int(M["m10"] / M["m00"])
-                        cy = int(M["m01"] / M["m00"])
-                        
-                        depth_h, depth_w = self.latest_depth_image.shape
-                        if 0 <= cy < depth_h and 0 <= cx < depth_w:
-                            d = self.latest_depth_image[cy, cx]
-                            
-                            if not np.isinf(d) and not np.isnan(d) and d > 0:
-                                # Back-project (Camera Frame)
-                                fx = self.camera_intrinsics[0, 0]
-                                fy = self.camera_intrinsics[1, 1]
-                                cx_k = self.camera_intrinsics[0, 2]
-                                cy_k = self.camera_intrinsics[1, 2]
-                                
-                                Z = d
-                                X = (cx - cx_k) * Z / fx
-                                Y = (cy - cy_k) * Z / fy
-                                
-                                # Create Pose in Camera Frame
-                                pose_msg = PoseStamped()
-                                pose_msg.header.stamp = self.get_clock().now().to_msg()
-                                pose_msg.header.frame_id = self.camera_frame_id
-                                pose_msg.pose.position.x = float(X)
-                                pose_msg.pose.position.y = float(Y)
-                                pose_msg.pose.position.z = float(Z)
-                                pose_msg.pose.orientation.w = 1.0 # Identity in Camera Frame
-                                
-                                # TRANSFORM TO WORLD FRAME (panda_link0)
-                                try:
-                                    # Wait for transform (0.1s timeout)
-                                    transform = self.tf_buffer.lookup_transform(
-                                        "panda_link0", 
-                                        self.camera_frame_id,
-                                        rclpy.time.Time())
-                                    
-                                    pose_world = do_transform_pose(pose_msg.pose, transform)
-                                    
-                                    # Overwrite Orientation with Fixed Grasp Orientation (Down)
-                                    # Top-Down Grasp: q(1,0,0,0) (180 about X)
-                                    pose_world.orientation.x = 1.0
-                                    pose_world.orientation.y = 0.0
-                                    pose_world.orientation.z = 0.0
-                                    pose_world.orientation.w = 0.0
-                                    
-                                    final_msg = PoseStamped()
-                                    final_msg.header.stamp = pose_msg.header.stamp
-                                    final_msg.header.frame_id = "panda_link0"
-                                    final_msg.pose = pose_world
-                                    
-                                    # SANITY CHECK: Widen Z-Range (0.0 to 0.50)
-                                    z_world = pose_world.position.z
-                                    if 0.0 <= z_world < 0.50:
-                                        self.publisher_pose.publish(final_msg)
-                                        self.get_logger().info(f'Target in World Frame: Z={z_world:.2f} [VALID]')
-                                    else:
-                                        self.get_logger().warn(f'Ignored Ghost Object at Z={z_world:.2f}')
-                                        pass
-                                    
-                                except Exception as tf_ex:
-                                    self.get_logger().warn(f'TF Error: {tf_ex}')
+
+            if cx is not None:
+                d = detection.depth_at(self.latest_depth_image, cx, cy)
+
+                if d is not None:
+                    # Back-project to camera frame (pure helper)
+                    X, Y, Z = detection.backproject(
+                        cx, cy, d, self.camera_intrinsics)
+
+                    # Create Pose in Camera Frame
+                    pose_msg = PoseStamped()
+                    pose_msg.header.stamp = self.get_clock().now().to_msg()
+                    pose_msg.header.frame_id = self.camera_frame_id
+                    pose_msg.pose.position.x = float(X)
+                    pose_msg.pose.position.y = float(Y)
+                    pose_msg.pose.position.z = float(Z)
+                    pose_msg.pose.orientation.w = 1.0  # Identity in Camera Frame
+
+                    # TRANSFORM TO WORLD FRAME (panda_link0)
+                    try:
+                        # Wait for transform (0.1s timeout)
+                        transform = self.tf_buffer.lookup_transform(
+                            "panda_link0",
+                            self.camera_frame_id,
+                            rclpy.time.Time())
+
+                        pose_world = do_transform_pose(pose_msg.pose, transform)
+
+                        # Overwrite Orientation with Fixed Grasp Orientation (Down)
+                        # Top-Down Grasp: q(1,0,0,0) (180 about X)
+                        grasp_x, grasp_y, grasp_z, grasp_w = detection.GRASP_ORIENTATION_DOWN
+                        pose_world.orientation.x = grasp_x
+                        pose_world.orientation.y = grasp_y
+                        pose_world.orientation.z = grasp_z
+                        pose_world.orientation.w = grasp_w
+
+                        final_msg = PoseStamped()
+                        final_msg.header.stamp = pose_msg.header.stamp
+                        final_msg.header.frame_id = "panda_link0"
+                        final_msg.pose = pose_world
+
+                        # SANITY CHECK: Widen Z-Range (0.0 to 0.50)
+                        z_world = pose_world.position.z
+                        if 0.0 <= z_world < 0.50:
+                            self.publisher_pose.publish(final_msg)
+                            self.get_logger().info(f'Target in World Frame: Z={z_world:.2f} [VALID]')
+                        else:
+                            self.get_logger().warn(f'Ignored Ghost Object at Z={z_world:.2f}')
+
+                    except Exception as tf_ex:
+                        self.get_logger().warn(f'TF Error: {tf_ex}')
 
             if self.debug_mode:
                 cv2.imshow("Debug: Mask", mask)
                 cv2.waitKey(1)
-                
+
         except Exception as e:
             self.get_logger().error(f'Image Callback Error: {e}')
 
