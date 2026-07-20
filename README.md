@@ -12,9 +12,9 @@ The repository contains two complementary tracks:
 
 ## Demo video
 
-[![Watch the demo on YouTube](https://img.shields.io/badge/▶%20Watch%20Demo-YouTube-red?style=for-the-badge&logo=youtube)](https://youtu.be/_889bOzgvUY)
+[![Watch the demo on YouTube](https://img.shields.io/badge/▶%20Watch%20Demo-YouTube-red?style=for-the-badge&logo=youtube)](https://youtu.be/tvgWZHi6GRg)
 
-A short screen capture showing the Franka arm using **Lula Inverse Kinematics** to pick up a rigid-body cube, transport it across the workspace, and place it — driven by `PickPlaceController` with real PhysX contact forces (gravity and friction): **https://youtu.be/_889bOzgvUY**
+A short screen capture showing the Franka arm using **Lula Inverse Kinematics** to pick up a rigid-body cube, transport it across the workspace, and place it — driven by `PickPlaceController` with real PhysX contact forces (gravity and friction): **https://youtu.be/tvgWZHi6GRg**
 
 For definitions of key terms, see the central **[AI & Robotics Glossary](https://github.com/camirian/robotics-ontology/blob/main/GLOSSARY.md)**.
 
