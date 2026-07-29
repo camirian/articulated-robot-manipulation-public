@@ -10,13 +10,29 @@ The repository contains two complementary tracks:
 1. A **standalone Isaac Sim demo** (`scripts/sim_demo.py`) that drives a full pick-and-place cycle using NVIDIA's Lula IK `PickPlaceController` and PhysX rigid-body physics — **no ROS 2 required**.
 2. A **ROS 2 workspace** (`ros2_ws/`) with two packages — `simple_manipulation` (Python) and `simple_moveit_interface` (C++) — that integrate MoveIt 2 motion planning and a perception node with Isaac Sim over the ROS 2 bridge.
 
+## Portfolio role and current boundary
+
+This is a supporting Physical AI integration demonstration. It provides an understandable visual example of Isaac Sim, robot manipulation, ROS 2, MoveIt 2, perception, and contact dynamics.
+
+The measured Physical AI flagship is [`sim-to-real-control-systems-public`](https://github.com/camirian/sim-to-real-control-systems-public), which focuses on closed-loop control, seeded disturbances, deterministic metrics, and evidence packets.
+
+This repository does not claim:
+
+- sim-to-real transfer to physical hardware;
+- robot safety, certification, or production readiness;
+- learned manipulation or reinforcement learning;
+- robust perception outside the bounded colour-based example;
+- or customer or commercial deployment.
+
+Future work here is limited to correctness, reproducibility, CI, setup, documentation, and genuine external issues. New scenarios and research directions belong in the flagship only when they answer a measured question.
+
 ## Demo video
 
 [![Watch the demo on YouTube](https://img.shields.io/badge/▶%20Watch%20Demo-YouTube-red?style=for-the-badge&logo=youtube)](https://youtu.be/tvgWZHi6GRg)
 
 A short screen capture showing the Franka arm using **Lula Inverse Kinematics** to pick up a rigid-body cube, transport it across the workspace, and place it — driven by `PickPlaceController` with real PhysX contact forces (gravity and friction): **https://youtu.be/tvgWZHi6GRg**
 
-For definitions of key terms, see the central **[AI & Robotics Glossary](https://github.com/camirian/robotics-ontology/blob/main/GLOSSARY.md)**.
+For public definitions of key terms, see the central **[AI & Robotics Glossary](https://github.com/camirian/robotics-ontology-public/blob/main/GLOSSARY.md)**.
 
 ---
 
