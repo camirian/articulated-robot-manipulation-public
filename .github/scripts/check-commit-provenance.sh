@@ -1,4 +1,12 @@
 #!/usr/bin/env bash
+# Commit provenance guard: rejects known-bad Git identities and reports
+# Co-authored-by trailers so unexpected contributors never reach main silently.
+#
+# Env overrides (space-separated, optional):
+#   ALLOWED_AUTHOR_EMAILS      default: "153974602+camirian@users.noreply.github.com"
+#   ALLOWED_COMMITTER_EMAILS   default: ALLOWED_AUTHOR_EMAILS + "noreply@github.com"
+#   ALLOWED_COAUTHOR_EMAILS    default: "" (no human co-author pre-approved)
+#   BLOCKED_EMAILS             default: "noreply@users.noreply.github.com"
 set -euo pipefail
 
 ALLOWED_AUTHOR_EMAILS="${ALLOWED_AUTHOR_EMAILS:-153974602+camirian@users.noreply.github.com}"
@@ -11,6 +19,7 @@ fail=0
 
 in_list() { local needle="${1,,}" hay="$2" item; for item in $hay; do [[ "${item,,}" == "$needle" ]] && return 0; done; return 1; }
 
+# --- Resolve the commit range introduced by this PR/push ---------------------
 range=""
 if [[ "${GITHUB_EVENT_NAME:-}" == "pull_request" || "${GITHUB_EVENT_NAME:-}" == "pull_request_target" ]]; then
   base_sha="$(jq -r '.pull_request.base.sha' "$GITHUB_EVENT_PATH")"
@@ -26,6 +35,7 @@ elif [[ "${GITHUB_EVENT_NAME:-}" == "push" ]]; then
     exit 0
   fi
   if [[ "$before" == "$zero" ]]; then
+    # First push of a new branch/ref: only check commits not already reachable elsewhere.
     commits="$(git rev-list "$after" --not --remotes='origin/*' 2>/dev/null || true)"
     [[ -z "$commits" ]] && commits="$after"
     range=""
@@ -78,10 +88,11 @@ for sha in $commits; do
     fail=1
   fi
 
+  # Parse Co-authored-by trailers (case-insensitive), tolerate malformed lines.
   while IFS= read -r line; do
     [[ -z "$line" ]] && continue
-    trailer_val="$(sed -E 's/^[Cc][Oo]-[Aa]uthored-[Bb][Yy]:[[:space:]]*//' <<<"$line")"
-    if [[ "$trailer_val" =~ ^(.+)\<([^\>]+)\>$ ]]; then
+    trailer_val="$(sed -E 's/^[Cc][Oo]-[Aa]uthored-[Bb][Yy]:[[:space:]]*//; s/\r$//' <<<"$line")"
+    if [[ "$trailer_val" =~ ^(.+)\<([^\>]+)\>[[:space:]]*$ ]]; then
       co_name="$(sed -E 's/[[:space:]]+$//' <<<"${BASH_REMATCH[1]}")"
       co_email="${BASH_REMATCH[2]}"
     else
