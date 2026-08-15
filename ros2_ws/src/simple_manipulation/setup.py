@@ -20,7 +20,7 @@ setup(
     install_requires=['setuptools'],
     zip_safe=True,
     maintainer='caaren',
-    maintainer_email='caaren.amirian.build@gmail.com',
+    maintainer_email='153974602+camirian@users.noreply.github.com',
     description='TODO: Package description',
     license='TODO: License declaration',
     tests_require=['pytest'],

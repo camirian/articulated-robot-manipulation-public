@@ -4,7 +4,7 @@
   <name>simple_manipulation</name>
   <version>0.0.0</version>
   <description>A ROS 2 package for articulated robot manipulation using Isaac Sim.</description>
-  <maintainer email="caaren.amirian.build@gmail.com">Caaren Amirian</maintainer>
+  <maintainer email="153974602+camirian@users.noreply.github.com">Caaren Amirian</maintainer>
   <license>Apache-2.0</license>
 
   <exec_depend>rclpy</exec_depend>
