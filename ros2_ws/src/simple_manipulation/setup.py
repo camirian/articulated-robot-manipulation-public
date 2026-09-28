@@ -21,8 +21,8 @@ setup(
     zip_safe=True,
     maintainer='caaren',
     maintainer_email='153974602+camirian@users.noreply.github.com',
-    description='TODO: Package description',
-    license='TODO: License declaration',
+    description='ROS 2 manipulation, perception, and MoveIt demo nodes for Isaac Sim.',
+    license='Apache-2.0',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [

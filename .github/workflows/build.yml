@@ -29,3 +29,9 @@ jobs:
         cd /home/ros2_ws
         . /opt/ros/humble/setup.sh
         colcon build --packages-select simple_manipulation simple_moveit_interface
+
+    - name: Run deterministic perception helper tests
+      run: |
+        PROJECT_DIR=/home/ros2_ws/src/articulated-robot-manipulation-public
+        PYTHONPATH="${PROJECT_DIR}/ros2_ws/src/simple_manipulation" \
+          python3 -m pytest "${PROJECT_DIR}/ros2_ws/src/simple_manipulation/test/test_detection.py" -q
